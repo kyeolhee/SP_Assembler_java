@@ -123,8 +123,7 @@ public class Assembler {
 				TokenList.add(new TokenTable(symtabList.get(numSection), instTable));
 			}
 			
-			TokenList.get(numSection).putToken(line);
-			System.out.println("rest");
+			TokenList.get(numSection).putToken(line, loccount);
 		}
 	}
 	
