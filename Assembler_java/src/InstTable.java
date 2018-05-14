@@ -38,7 +38,7 @@ public class InstTable {
 			BufferedReader bufReader = new BufferedReader(filereader);
 			
 			String instName;
-			String line = "";
+			String line;
 			StringTokenizer token;
 			while ((line = bufReader.readLine()) != null) {
 				token = new StringTokenizer(line);
@@ -56,6 +56,18 @@ public class InstTable {
 	}
 	
 	//get, set, search 등의 함수는 자유 구현
+	public int getFormat(String instName) {
+		int format;
+		
+		if (instMap.containsKey(instName)) {
+			format = instMap.get(instName).format;
+		}
+		else
+			format = -1;
+		
+		return format;
+	}
+	
 	public int getOpcode (String instName) {
 		int opcode;
 		
@@ -68,18 +80,17 @@ public class InstTable {
 		return opcode;
 	}
 	
-	public int getFormat(String instName) {
-		int format;
+	public int getNumberOfOperand (String instName) {
+		int numberOfOperand;
 		
 		if (instMap.containsKey(instName)) {
-			format = instMap.get(instName).format;
+			numberOfOperand = instMap.get(instName).numberOfOperand;
 		}
 		else
-			format = -1;
+			numberOfOperand = -1;
 		
-		return format;
+		return numberOfOperand;
 	}
-
 }
 /**
  * 명령어 하나하나의 구체적인 정보는 Instruction클래스에 담긴다.

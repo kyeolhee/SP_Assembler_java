@@ -1,6 +1,12 @@
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 
 /**
@@ -37,6 +43,8 @@ public class Assembler {
 	 */
 	ArrayList<String> codeList;
 	
+	int numSection;
+	int loccount;
 	/**
 	 * 클래스 초기화. instruction Table을 초기화와 동시에 세팅한다.
 	 * 
@@ -91,8 +99,33 @@ public class Assembler {
 	 *    주의사항 : SymbolTable과 TokenTable은 프로그램의 section별로 하나씩 선언되어야 한다.
 	 */
 	private void pass1() {
-		// TODO Auto-generated method stub
+		String line;
 		
+		// TODO Auto-generated method stub
+		for (int i = 0; i < lineList.size(); i++) {
+			line = lineList.get(i);
+			
+			if (line.contains("START")) {
+				numSection = 0;
+				loccount = 0;
+				
+				symtabList.clear();
+				TokenList.clear();
+				
+				symtabList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(0), instTable));
+			}
+			else if (line.contains("CSECT")) {
+				numSection++;
+				loccount = 0;
+				
+				symtabList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(numSection), instTable));
+			}
+			
+			TokenList.get(numSection).putToken(line);
+			System.out.println("rest");
+		}
 	}
 	
 	/**
@@ -110,6 +143,24 @@ public class Assembler {
 	 */
 	private void loadInputFile(String inputFile) {
 		// TODO Auto-generated method stub
-		
+		try {
+			File file = new File(inputFile);
+			FileReader filereader = new FileReader(file);
+			BufferedReader bufReader = new BufferedReader(filereader);
+			
+			String line;
+			StringTokenizer token;
+			while ((line = bufReader.readLine()) != null) {
+				token = new StringTokenizer(line);
+				lineList.add(line);
+			}
+			bufReader.close();
+		}
+		catch (FileNotFoundException e) {
+			System.out.println(e);
+		}
+		catch (IOException e) {
+			System.out.println(e);
+		}
 	}
 }

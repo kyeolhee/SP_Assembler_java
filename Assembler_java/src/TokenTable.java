@@ -31,15 +31,17 @@ public class TokenTable {
 	 * @param instTab : instruction 명세가 정의된 instTable
 	 */
 	public TokenTable(SymbolTable symTab, InstTable instTab) {
-		//...
+		tokenList = new ArrayList<>();
+		this.symTab = symTab;
+		this.instTab = instTab;
 	}
 	
 	/**
 	 * 일반 문자열을 받아서 Token단위로 분리시켜 tokenList에 추가한다.
 	 * @param line : 분리되지 않은 일반 문자열
 	 */
-	public void putToken(String line) {
-		tokenList.add(new Token(line));
+	public void putToken(String line, int loccount) {
+		tokenList.add(new Token(line, instTab, location));
 	}
 	
 	/**
@@ -76,6 +78,7 @@ public class TokenTable {
  * 의미 해석이 끝나면 pass2에서 object code로 변형되었을 때의 바이트 코드 역시 저장한다.
  */
 class Token{
+	InstTable instTable;
 	//의미 분석 단계에서 사용되는 변수들
 	int location;
 	String label;
@@ -92,8 +95,10 @@ class Token{
 	 * 클래스를 초기화 하면서 바로 line의 의미 분석을 수행한다. 
 	 * @param line 문장단위로 저장된 프로그램 코드
 	 */
-	public Token(String line) {
+	public Token(String line, InstTable instTable, int location) {
 		//initialize 추가
+		this.instTable = instTable;
+		this.location = location;
 		parsing(line);
 	}
 	
@@ -102,7 +107,54 @@ class Token{
 	 * @param line 문장단위로 저장된 프로그램 코드.
 	 */
 	public void parsing(String line) {
+		String[] token = line.split("\t");
 		
+		if (!(token[0].equals("."))) {
+			label = token[0];
+			operator = token[1];
+			
+			if (instTable.getNumberOfOperand(operator) == 0) {
+				operand = null; // 나중에 문제생기면 ' '로 바꾸기
+			}
+			else {
+				String[] opToken = token[2].split(",");
+				
+				for (int i = 0; i < instTable.getNumberOfOperand(operator); i++) {
+					operand[i] = opToken[i];
+				}
+			}
+			
+			comment = token[3];
+			
+			/* x 설정 */
+			if (operand.length == 2 && operand[1].equals("X")) {
+				setFlag(TokenTable.xFlag, 1);
+			}
+			
+			/* b, p, e 설정 */
+			if (operator.charAt(0) == '+') {
+				setFlag(TokenTable.eFlag, 1);
+				byteSize = 4;
+			}
+			else {
+				
+				byteSize = getByteSize(operator);
+			}
+			
+			/* n, i 설정 */
+			if (operand[0].charAt(0) == '@') {
+				setFlag(TokenTable.nFlag, 1);
+			}
+			
+			else if (operand[0].charAt(0) == '#') {
+				setFlag(TokenTable.iFlag, 1);
+			}
+			
+			else {
+				setFlag(TokenTable.nFlag,1);
+				setFlag(TokenTable.iFlag,1);	
+			}
+		}
 	}
 	
 	/** 
@@ -115,7 +167,12 @@ class Token{
 	 * @param value : 집어넣고자 하는 값. 1또는 0으로 선언한다.
 	 */
 	public void setFlag(int flag, int value) {
-		//...
+		if (value == 0) {
+			nixbpe ^= flag;
+		}
+		else {
+			nixbpe |= flag;
+		}
 	}
 	
 	/**
@@ -130,4 +187,14 @@ class Token{
 	public int getFlag(int flags) {
 		return nixbpe & flags;
 	}
+	
+	public int getByteSize(String operator) {
+		if(operator.charAt(0) == '+' && instTable.getFormat(operator) == 3) {
+			return 4;
+		}
+		else
+			return instTable.getFormat(operator);
+	}
+	
 }
+
