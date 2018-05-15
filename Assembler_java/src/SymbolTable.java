@@ -7,10 +7,12 @@ public class SymbolTable {
 	ArrayList<String> symbolList;
 	ArrayList<Integer> locationList;
 	// 기타 literal, external 선언 및 처리방법을 구현한다.
+	ArrayList<Integer> modifyPointList;
 
 	public SymbolTable() {
-	symbolList=new ArrayList<>();
-	locationList=new ArrayList<>();
+		symbolList = new ArrayList<>();
+		locationList = new ArrayList<>();
+		modifyPointList = new ArrayList<>();
 	}
 
 	/**
@@ -20,15 +22,14 @@ public class SymbolTable {
 	 *            : 새로 추가되는 symbol의 label
 	 * @param location
 	 *            : 해당 symbol이 가지는 주소값 <br>
-	 * 			<br>
+	 *            <br>
 	 *            주의 : 만약 중복된 symbol이 putSymbol을 통해서 입력된다면 이는 프로그램 코드에 문제가 있음을 나타낸다.
 	 *            매칭되는 주소값의 변경은 modifySymbol()을 통해서 이루어져야 한다.
 	 */
 	public void putSymbol(String symbol, int location) {
 		if (!symbolList.contains(symbol)) {
-				symbolList.add(symbol);
-				locationList.add(location);
-		
+			symbolList.add(symbol);
+			locationList.add(location);
 		}
 	}
 
@@ -80,5 +81,10 @@ public class SymbolTable {
 	public int getListSize() {
 		return symbolList.size();
 	}
-
+	
+	public void putModifySymbol(String symbol, int location, int modifyPoint) {
+		symbolList.add(symbol);
+		locationList.add(location);
+		modifyPointList.add(modifyPoint);
+	}
 }

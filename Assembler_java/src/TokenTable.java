@@ -141,27 +141,34 @@ class Token {
 					comment = token[3];
 				}
 
-				if (instTable.getOpcode(operator) > 0) {
+				/* 4형식인 경우 nixbpe 설정 */
+				if (token[1].charAt(0) == '+') {
+					setFlag(TokenTable.nFlag, 1);
+					setFlag(TokenTable.iFlag, 1);
+					setFlag(TokenTable.eFlag, 1);
+
+					if (operand != null && operand.length == 2 && operand[1].equals("X")) {
+						setFlag(TokenTable.xFlag, 1);
+					}
+					byteSize = 4;
+				}
+
+				/* 4형식이 아닌 inst인 경우 */
+				else if (instTable.getOpcode(operator) >= 0) {
 					/* x 설정 */
 					if (operand != null && operand.length == 2 && operand[1].equals("X")) {
 						setFlag(TokenTable.xFlag, 1);
 					}
 
 					/* n, i, b, p, e 설정 */
-					/* 4형식의 경우 */
-					if (operator.charAt(0) == '+') {
-						setFlag(TokenTable.nFlag, 1);
-						setFlag(TokenTable.iFlag, 1);
-						setFlag(TokenTable.eFlag, 1);
-						byteSize = 4;
-					}
-					/* 3형식이 아닌 경우 */
+					/* 3형식인 경우 */
 					else if (getByteSize(operator, operand) == 3) {
 						byteSize = 3;
 						if (operand != null) {
 							if (operand[0].charAt(0) == '@') {
 								setFlag(TokenTable.nFlag, 1);
 								setFlag(TokenTable.pFlag, 1);
+
 							} else if (operand != null && operand[0].charAt(0) == '#') {
 								setFlag(TokenTable.iFlag, 1);
 							}
@@ -171,11 +178,17 @@ class Token {
 							setFlag(TokenTable.nFlag, 1);
 							setFlag(TokenTable.iFlag, 1);
 						}
-					} else {
+					}
+
+					/* 1, 2형식의 경우 */
+					else {
 						byteSize = getByteSize(operator, operand);
 					}
-				} else {
-					byteSize = 0;
+				}
+
+				/* instTable에 없는 경우 */
+				else {
+					byteSize = getByteSize(operator, operand);
 				}
 			}
 		}
@@ -194,10 +207,10 @@ class Token {
 	 *            : 집어넣고자 하는 값. 1또는 0으로 선언한다.
 	 */
 	public void setFlag(int flag, int value) {
-		if (value == 0) {
-			nixbpe ^= flag;
-		} else {
+		if (value == 1) {
 			nixbpe |= flag;
+		} else {
+			nixbpe ^= flag;
 		}
 	}
 
@@ -222,7 +235,7 @@ class Token {
 		} else {
 			if (operator.equals("RESW")) {
 				return Integer.parseInt(operand[0]) * 3;
-			} else if (operator.equals("REWB")) {
+			} else if (operator.equals("RESB")) {
 				return Integer.parseInt(operand[0]);
 			} else if (operator.equals("BYTE")) {
 				return 1;

@@ -81,7 +81,7 @@ public class Assembler {
 		assembler.printSymbolTable("symtab_20160259.txt");
 
 		assembler.pass2();
-		assembler.printObjectCode("output_00000000");
+		assembler.printObjectCode("output_20160259.txt");
 
 	}
 
@@ -110,7 +110,8 @@ public class Assembler {
 
 			for (int i = 0; i <= numSection; i++) {
 				for (int j = 0; j < symtabList.get(i).getListSize(); j++) {
-					String line = symtabList.get(i).getSymbol(j) + "\t" + Integer.toHexString(symtabList.get(i).getAddress(j)) + "\r\n";
+					String line = symtabList.get(i).getSymbol(j) + "\t"
+							+ Integer.toHexString(symtabList.get(i).getAddress(j)) + "\r\n";
 					filewriter.write(line);
 				}
 				filewriter.write("\r\n");
@@ -184,6 +185,7 @@ public class Assembler {
 								- symtabList.get(numSection).search(opToken[1]);
 
 						symtabList.get(numSection).putSymbol(ParsedToken.label, calLocation);
+						TokenList.get(numSection).getToken(TokenIndex).location = calLocation;
 					}
 				} else {
 					symtabList.get(numSection).putSymbol(ParsedToken.label, ParsedToken.location);
@@ -218,7 +220,31 @@ public class Assembler {
 			}
 
 			/* externalList 저장 */
-			// TO DO
+			if (ParsedToken.operator != null && ParsedToken.operator.equals("EXTREF")) {
+				String[] exToken = ParsedToken.operand[0].split(",");
+
+				for (int exIndex = 0; exIndex < exToken.length; exIndex++) {
+					externalList.get(numSection).putSymbol(exToken[exIndex], 0);
+				}
+			}
+
+			/* modifyList 저장 */
+			if (ParsedToken.operand != null) {
+				for (int modifIndex = 0; modifIndex < externalList.get(numSection).getListSize(); modifIndex++) {
+					if (ParsedToken.operand[0] != null && ParsedToken.operand[0].contains(externalList.get(numSection).getSymbol(modifIndex))) {
+						if (ParsedToken.operator.charAt(0) == '+') {
+							modifyList.get(numSection).putModifySymbol("+" + externalList.get(numSection).getSymbol(modifIndex), ParsedToken.location + 1, 5);
+						}
+						else if (ParsedToken.operand[0].contains("-")) {
+							String[] modifToken = ParsedToken.operand[0].split("-");
+							
+							modifyList.get(numSection).putModifySymbol("+" + modifToken[0], ParsedToken.location, 6);
+							modifyList.get(numSection).putModifySymbol("-" + modifToken[1], ParsedToken.location, 6);
+							break;
+						}
+					}
+				}
+			}
 			TokenIndex++;
 		}
 	}
