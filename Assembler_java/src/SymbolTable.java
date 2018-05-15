@@ -7,11 +7,15 @@ public class SymbolTable {
 	ArrayList<String> symbolList;
 	ArrayList<Integer> locationList;
 	// 기타 literal, external 선언 및 처리방법을 구현한다.
+	ArrayList<Integer> literalValue;
+	ArrayList<Integer> literalSize;
 	ArrayList<Integer> modifyPointList;
 
 	public SymbolTable() {
 		symbolList = new ArrayList<>();
 		locationList = new ArrayList<>();
+		literalValue = new ArrayList<>();
+		literalSize = new ArrayList<>();
 		modifyPointList = new ArrayList<>();
 	}
 
@@ -81,7 +85,40 @@ public class SymbolTable {
 	public int getListSize() {
 		return symbolList.size();
 	}
+
+	public int getLiteralValue(int index) {
+		return literalValue.get(index);
+	}
+
+	public int getLiteralSize(int index) {
+		return literalSize.get(index);
+	}
 	
+	public int getModifyPoint (int index) {
+		return modifyPointList.get(index);
+	}
+	public void putLiteral(String symbol, int location, String value, int size) {
+		int litValue = 0;
+		String litValue_s = new String();
+		if (!symbolList.contains(symbol)) {
+			if (symbol.charAt(0) == 'C') {
+				for (int i = 0; i < value.length(); i++) {
+					litValue_s = litValue_s + Integer.toHexString((int) value.charAt(i));
+				}
+
+				litValue = Integer.parseInt(litValue_s, 16);
+			}
+			else {
+				litValue = Integer.parseInt(value);
+			}
+
+			symbolList.add(symbol);
+			locationList.add(location);
+			literalValue.add(litValue);
+			literalSize.add(size);
+		}
+	}
+
 	public void putModifySymbol(String symbol, int location, int modifyPoint) {
 		symbolList.add(symbol);
 		locationList.add(location);

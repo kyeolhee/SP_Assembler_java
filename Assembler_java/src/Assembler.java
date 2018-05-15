@@ -93,7 +93,21 @@ public class Assembler {
 	 */
 	private void printObjectCode(String fileName) {
 		// TODO Auto-generated method stub
+		try {
+			File file = new File(fileName);
+			FileWriter filewriter = new FileWriter(file);
 
+			for (int i = 0; i < codeList.size(); i++) {
+				filewriter.write(codeList.get(i));
+				filewriter.write("\r\n");
+
+			}
+			filewriter.close();
+		} catch (FileNotFoundException e) {
+			System.out.println(e);
+		} catch (IOException e) {
+			System.out.println(e);
+		}
 	}
 
 	/**
@@ -153,9 +167,9 @@ public class Assembler {
 				modifyList.clear();
 
 				symtabList.add(new SymbolTable());
-				TokenList.add(new TokenTable(symtabList.get(0), instTable));
 				literalList.add(new SymbolTable());
 				externalList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(0), literalList.get(0), externalList.get(0), instTable));
 				modifyList.add(new SymbolTable());
 			} else if (line.contains("CSECT")) {
 				numSection++;
@@ -163,9 +177,10 @@ public class Assembler {
 				TokenIndex = 0;
 
 				symtabList.add(new SymbolTable());
-				TokenList.add(new TokenTable(symtabList.get(numSection), instTable));
 				literalList.add(new SymbolTable());
 				externalList.add(new SymbolTable());
+				TokenList.add(new TokenTable(symtabList.get(numSection), literalList.get(numSection),
+						externalList.get(numSection), instTable));
 				modifyList.add(new SymbolTable());
 			}
 
@@ -196,7 +211,14 @@ public class Assembler {
 			/* literal table 저장 */
 			if (ParsedToken.operand != null) {
 				if (ParsedToken.operand[0] != null && ParsedToken.operand[0].charAt(0) == '=') {
-					literalList.get(numSection).putSymbol(ParsedToken.operand[0].substring(1), 0);
+					int litLength = ParsedToken.operand[0].length();
+					if (ParsedToken.operand[0].charAt(1) == 'C') {
+						literalList.get(numSection).putLiteral(ParsedToken.operand[0].substring(1), 0,
+								ParsedToken.operand[0].substring(3, litLength - 1), litLength - 4);
+					} else if (ParsedToken.operand[0].charAt(1) == 'X') {
+						literalList.get(numSection).putLiteral(ParsedToken.operand[0].substring(1), 0,
+								ParsedToken.operand[0].substring(3, litLength - 1), 1);
+					}
 				}
 			}
 
@@ -210,6 +232,7 @@ public class Assembler {
 						if (literalName.charAt(0) == 'C') {
 							int length = literalName.length();
 							loccount += literalName.substring(2, length - 1).length();
+							ParsedToken.byteSize = length - 3;
 						} else if (literalName.charAt(0) == 'X') {
 							loccount++;
 						}
@@ -231,13 +254,15 @@ public class Assembler {
 			/* modifyList 저장 */
 			if (ParsedToken.operand != null) {
 				for (int modifIndex = 0; modifIndex < externalList.get(numSection).getListSize(); modifIndex++) {
-					if (ParsedToken.operand[0] != null && ParsedToken.operand[0].contains(externalList.get(numSection).getSymbol(modifIndex))) {
+					if (ParsedToken.operand[0] != null
+							&& ParsedToken.operand[0].contains(externalList.get(numSection).getSymbol(modifIndex))) {
 						if (ParsedToken.operator.charAt(0) == '+') {
-							modifyList.get(numSection).putModifySymbol("+" + externalList.get(numSection).getSymbol(modifIndex), ParsedToken.location + 1, 5);
-						}
-						else if (ParsedToken.operand[0].contains("-")) {
+							modifyList.get(numSection).putModifySymbol(
+									"+" + externalList.get(numSection).getSymbol(modifIndex), ParsedToken.location + 1,
+									5);
+						} else if (ParsedToken.operand[0].contains("-")) {
 							String[] modifToken = ParsedToken.operand[0].split("-");
-							
+
 							modifyList.get(numSection).putModifySymbol("+" + modifToken[0], ParsedToken.location, 6);
 							modifyList.get(numSection).putModifySymbol("-" + modifToken[1], ParsedToken.location, 6);
 							break;
@@ -254,8 +279,121 @@ public class Assembler {
 	 * 1) 분석된 내용을 바탕으로 object code를 생성하여 codeList에 저장.
 	 */
 	private void pass2() {
+		String codeLine;
+		Token currentToken;
+		int sectionSize;
+		int endFlag;
+		
 		// TODO Auto-generated method stub
+		for (int secIndex = 0; secIndex <= numSection; secIndex++) {
+			for (int tokenIndex = 0; tokenIndex < TokenList.get(secIndex).getSize(); tokenIndex++) {
+				TokenList.get(secIndex).makeObjectCode(tokenIndex);
+			}
+		}
 
+		for (int secIndex = 0; secIndex <= numSection; secIndex++) {
+			sectionSize = 0;
+			endFlag = 0;
+			for (int tokenIndex = 0; tokenIndex < TokenList.get(secIndex).getSize(); tokenIndex++) {
+				codeLine = new String();
+				currentToken = TokenList.get(secIndex).getToken(tokenIndex);
+				
+				if (currentToken.operator != null && currentToken.operator.equals("START")) {
+					endFlag = 1;
+				}
+
+				/* header */
+				if (tokenIndex == 0) {
+					for (int i = 0; i < TokenList.get(secIndex).getSize(); i++) {
+						sectionSize += TokenList.get(secIndex).getToken(i).byteSize;
+					}
+					/*
+					for (int i = 0; i < literalList.get(secIndex).getListSize(); i++) {
+						sectionSize += literalList.get(secIndex).getLiteralSize(i);
+					}
+					*/
+					codeLine = "H" + currentToken.label + "\t"
+							+ String.format("%06X%06X", currentToken.location, sectionSize);
+					codeList.add(codeLine);
+				}
+
+				/* define */
+				else if (currentToken.operator != null && currentToken.operator.equals("EXTDEF")) {
+					codeLine = "D";
+
+					String[] defToken = currentToken.operand[0].split(",");
+					for (int i = 0; i < defToken.length; i++) {
+						codeLine = codeLine + defToken[i]
+								+ String.format("%06X", symtabList.get(secIndex).search(defToken[i]));
+					}
+					codeList.add(codeLine);
+				}
+
+				/* refer */
+				else if (currentToken.operator != null && currentToken.operator.equals("EXTREF")) {
+					codeLine = "R";
+
+					String[] refToken = currentToken.operand[0].split(",");
+					for (int i = 0; i < refToken.length; i++) {
+						codeLine = codeLine + refToken[i];
+					}
+					codeList.add(codeLine);
+				}
+
+				/* text */
+				else if (currentToken.objectCode != null) {
+					int startAddress = currentToken.location;
+					int size;
+					codeLine = "T";
+
+					String obCodes = new String();
+					for (size = 0; size < 32;) {
+						if (tokenIndex >= TokenList.get(secIndex).getSize()) {
+							break;
+						}
+						if ((size + TokenList.get(secIndex).getToken(tokenIndex).byteSize) > 31) {
+							tokenIndex--;
+							break;
+						}
+						if (TokenList.get(secIndex).getToken(tokenIndex).operator.equals("RESW")
+								|| TokenList.get(secIndex).getToken(tokenIndex).operator.equals("RESB")) {
+							break;
+						}
+						if (TokenList.get(secIndex).getToken(tokenIndex).objectCode != null)
+							if (TokenList.get(secIndex).getToken(tokenIndex).objectCode.length() == 5) {
+								TokenList.get(secIndex).getToken(tokenIndex).objectCode = "0"
+										+ TokenList.get(secIndex).getToken(tokenIndex).objectCode;
+							}
+						obCodes = obCodes + String.format("%s",
+								TokenList.get(secIndex).getToken(tokenIndex).objectCode.toUpperCase());
+						size += TokenList.get(secIndex).getToken(tokenIndex).byteSize;
+						tokenIndex++;
+					}
+
+					codeLine = codeLine + String.format("%06X", startAddress) + String.format("%02X", size)
+							+ obCodes.toUpperCase();
+					codeList.add(codeLine);
+				}
+			}
+
+			/* modification */
+			for (int modIndex = 0; modIndex < modifyList.get(secIndex).getListSize(); modIndex++) {
+				codeLine = "M" + String.format("%06X", modifyList.get(secIndex).getAddress(modIndex)) + 
+						String.format("%02X", modifyList.get(secIndex).getModifyPoint(modIndex)) + modifyList.get(secIndex).getSymbol(modIndex);
+			codeList.add(codeLine);
+			}
+			
+			/* End */
+			if (endFlag == 1) {
+				codeLine = "E" + String.format("%06X", symtabList.get(secIndex).getAddress(0));
+				codeList.add(codeLine);
+			}
+			else {
+				codeLine = "E";
+				codeList.add(codeLine);
+			}
+			codeList.add(" ");
+		}
 	}
 
 	/**
