@@ -52,7 +52,12 @@ public class InstTable {
 		}
 	}
 
-	// get, set, search 등의 함수는 자유 구현
+	/**
+	 * 입력된 instruction의 format을 반환한다
+	 * 
+	 * @param instName
+	 *            : instuction의 이름
+	 */
 	public int getFormat(String instName) {
 		int format;
 
@@ -64,6 +69,12 @@ public class InstTable {
 		return format;
 	}
 
+	/**
+	 * 입력된 instruction의 Opcode를 반환한다
+	 * 
+	 * @param instName
+	 *            : instuction의 이름
+	 */
 	public int getOpcode(String instName) {
 		int opcode;
 
@@ -75,6 +86,12 @@ public class InstTable {
 		return opcode;
 	}
 
+	/**
+	 * 입력된 instruction의 operand 갯수를 반환한다
+	 * 
+	 * @param instName
+	 *            : instuction의 이름
+	 */
 	public int getNumberOfOperand(String instName) {
 		int numberOfOperand;
 

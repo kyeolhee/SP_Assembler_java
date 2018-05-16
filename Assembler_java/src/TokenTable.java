@@ -95,6 +95,7 @@ public class TokenTable {
 				tokenList.get(index).objectCode = Integer.toHexString(op_ni) + Integer.toHexString(xbpe) + "00000";
 			}
 
+			/* operator로 END가 들어와 프로그램이 끝난 것을 알면 literalTab에 저장이 안된 literal을 저장한다 */
 			else if (tokenList.get(index).operator.equals("END")) {
 				for (int litIndex = 0; litIndex < literalTab.getListSize(); litIndex++) {
 					if (literalTab.getLiteralSize(litIndex) == 3) {
@@ -106,6 +107,7 @@ public class TokenTable {
 					}
 				}
 			}
+
 			/* 3형식의 경우 */
 			else if (instTab.getFormat(tokenList.get(index).operator) == 3) {
 				op_ni = instTab.getOpcode(tokenList.get(index).operator)
@@ -114,14 +116,21 @@ public class TokenTable {
 						+ tokenList.get(index).getFlag(pFlag) + tokenList.get(index).getFlag(eFlag);
 
 				if (instTab.getNumberOfOperand(tokenList.get(index).operator) > 0) {
+					/* immediate addressing 인 경우 */
 					if (tokenList.get(index).operand[0].charAt(0) == '#') {
 						address = Integer.parseInt(tokenList.get(index).operand[0].substring(1));
-					} else if (tokenList.get(index).operand[0].charAt(0) == '@') {
+					}
+					/* indirect addressing 인 경우 */
+					else if (tokenList.get(index).operand[0].charAt(0) == '@') {
 						address = 0;
-					} else if (tokenList.get(index).operand[0].charAt(0) == '=') {
+					}
+					/* literal 이 선언된 경우 */
+					else if (tokenList.get(index).operand[0].charAt(0) == '=') {
 						address = literalTab.search(tokenList.get(index).operand[0].substring(1))
 								- tokenList.get(index + 1).location;
-					} else if (symTab.search(tokenList.get(index).operand[0]) >= 0) {
+					}
+					/* operand에 symbol이 있는 경우 */
+					else if (symTab.search(tokenList.get(index).operand[0]) >= 0) {
 						address = symTab.search(tokenList.get(index).operand[0]) - tokenList.get(index + 1).location;
 					} else {
 						address = 0;
@@ -130,6 +139,7 @@ public class TokenTable {
 					address = 0;
 				}
 
+				/* objectCode를 3자리 16진수 문자열로 저장 */
 				String strAddress = Integer.toHexString(address);
 				int addLength = strAddress.length();
 				if (addLength > 3) {
@@ -144,7 +154,7 @@ public class TokenTable {
 			else if (instTab.getFormat(tokenList.get(index).operator) >= 0) {
 				int register_1 = 0;
 				int register_2 = 0;
-				
+
 				if (tokenList.get(index).operand[0].equals("A")) {
 					register_1 = A_Reg;
 				} else if (tokenList.get(index).operand[0].equals("X")) {
@@ -188,10 +198,14 @@ public class TokenTable {
 				}
 				tokenList.get(index).objectCode = Integer.toHexString(instTab.getOpcode(tokenList.get(index).operator))
 						+ Integer.toHexString(register_1) + Integer.toHexString(register_2);
-			} else if (tokenList.get(index).operator.equals("BYTE")) {
+			}
+			/* BYTE 를 메모리에 할당할 경우 */
+			else if (tokenList.get(index).operator.equals("BYTE")) {
 				int opLength = tokenList.get(index).operand[0].length();
 				tokenList.get(index).objectCode = tokenList.get(index).operand[0].substring(2, opLength - 1);
-			} else if (tokenList.get(index).operator.equals("WORD")) {
+			}
+			/* WORD 를 메모리에 할당할 경우 */
+			else if (tokenList.get(index).operator.equals("WORD")) {
 				for (int exIndex = 0; exIndex < externalTab.getListSize(); exIndex++) {
 					if (tokenList.get(index).operand[0].contains(externalTab.getSymbol(exIndex))) {
 						tokenList.get(index).objectCode = "000000";
@@ -200,7 +214,9 @@ public class TokenTable {
 						tokenList.get(index).objectCode = tokenList.get(index).operand[0].substring(2, opLength - 1);
 					}
 				}
-			} else if (tokenList.get(index).operator.equals("LTORG")) {
+			}
+			/* LTORG를 통해 literal을 literalTab에 저장 */
+			else if (tokenList.get(index).operator.equals("LTORG")) {
 				for (int litIndex = 0; litIndex < literalTab.getListSize(); litIndex++) {
 					if (literalTab.getLiteralSize(litIndex) == 3) {
 						tokenList.get(index).objectCode = String.format("%06X", literalTab.getLiteralValue(litIndex));
@@ -222,6 +238,9 @@ public class TokenTable {
 		return tokenList.get(index).objectCode;
 	}
 
+	/**
+	 * 해당하는 tokenTable의 List수를 리턴한다.
+	 */
 	public int getSize() {
 		return tokenList.size();
 	}
@@ -274,7 +293,7 @@ class Token {
 
 			if (token.length > 2) {
 				if (instTable.getNumberOfOperand(operator) == 0) {
-					operand = null; // 나중에 문제생기면 ' '로 바꾸기
+					operand = null;
 				} else if (instTable.getNumberOfOperand(operator) > 0) {
 					String[] opToken = token[2].split(",");
 
@@ -332,15 +351,12 @@ class Token {
 							setFlag(TokenTable.nFlag, 1);
 							setFlag(TokenTable.iFlag, 1);
 						}
-
 					}
-
 					/* 1, 2형식의 경우 */
 					else {
 						byteSize = getByteSize(operator, operand);
 					}
 				}
-
 				/* instTable에 없는 경우 */
 				else {
 					byteSize = getByteSize(operator, operand);
@@ -384,6 +400,15 @@ class Token {
 		return nixbpe & flags;
 	}
 
+	/**
+	 * 해당하는 line의 byte 크기를 반환한다
+	 * 
+	 * @param operator
+	 *            : 해당하는 line의 operator
+	 * @param operand
+	 *            : 해당하는 line의 operand. RESW나 RESB에 사용
+	 * 
+	 */
 	public int getByteSize(String operator, String[] operand) {
 		if (instTable.getFormat(operator) > 0) {
 			return instTable.getFormat(operator);

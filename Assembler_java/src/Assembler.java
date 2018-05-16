@@ -40,9 +40,11 @@ public class Assembler {
 	ArrayList<SymbolTable> symtabList;
 	/** 프로그램의 section별로 프로그램을 저장하는 공간 */
 	ArrayList<TokenTable> TokenList;
-
+	/** 프로그램의 section별로 literal을 저장하는 공간 */
 	ArrayList<SymbolTable> literalList;
+	/** 프로그램의 section별로 external reference을 저장하는 공간 */
 	ArrayList<SymbolTable> externalList;
+	/** 프로그램의 section별로 modification을 저장하는 공간 */
 	ArrayList<SymbolTable> modifyList;
 	/**
 	 * Token, 또는 지시어에 따라 만들어진 오브젝트 코드들을 출력 형태로 저장하는 공간. <br>
@@ -71,7 +73,7 @@ public class Assembler {
 	}
 
 	/**
-	 * 어셐블러의 메인 루틴
+	 * 어셈블러의 메인 루틴
 	 */
 	public static void main(String[] args) {
 		Assembler assembler = new Assembler("inst.data");
@@ -99,7 +101,7 @@ public class Assembler {
 
 			for (int i = 0; i < codeList.size(); i++) {
 				filewriter.write(codeList.get(i));
-				filewriter.write("\r\n");
+				filewriter.write("\r\n"); // filewirter.write("\n");하면 개행이 깨짐
 
 			}
 			filewriter.close();
@@ -128,7 +130,7 @@ public class Assembler {
 							+ Integer.toHexString(symtabList.get(i).getAddress(j)) + "\r\n";
 					filewriter.write(line);
 				}
-				filewriter.write("\r\n");
+				filewriter.write("\r\n"); // filewirter.write("\n");하면 개행이 깨짐
 			}
 			filewriter.close();
 		} catch (FileNotFoundException e) {
@@ -155,6 +157,7 @@ public class Assembler {
 		for (int i = 0; i < lineList.size(); i++) {
 			line = lineList.get(i);
 
+			/* START 가 들어올 시에 모든 List를 초기화해준다 */
 			if (line.contains("START")) {
 				numSection = 0;
 				loccount = 0;
@@ -171,7 +174,9 @@ public class Assembler {
 				externalList.add(new SymbolTable());
 				TokenList.add(new TokenTable(symtabList.get(0), literalList.get(0), externalList.get(0), instTable));
 				modifyList.add(new SymbolTable());
-			} else if (line.contains("CSECT")) {
+			}
+			/* CSECT 가 들어올 시에 새로운 section이 시작되므로 새로운 list를 만들어준다 */
+			else if (line.contains("CSECT")) {
 				numSection++;
 				loccount = 0;
 				TokenIndex = 0;
@@ -184,10 +189,12 @@ public class Assembler {
 				modifyList.add(new SymbolTable());
 			}
 
+			/* 입력받은 line을 token으로 나누어 tokenList에 저장 */
 			TokenList.get(numSection).putToken(line, loccount);
+			/* 바로 전에 parsing한 token */
 			ParsedToken = TokenList.get(numSection).getToken(TokenIndex);
 
-			/* symbol table 저장 */
+			/* symbol table 저장 - symbol명과 location */
 			if (line.charAt(0) != '.' && !ParsedToken.label.equals(" ")) {
 				if (ParsedToken.operator.equals("EQU")) {
 					if (ParsedToken.operand[0].equals("*")) {
@@ -208,7 +215,7 @@ public class Assembler {
 				loccount += ParsedToken.byteSize;
 			}
 
-			/* literal table 저장 */
+			/* literal table 저장 - literal명과 location(0으로 통일), literal의 value와 크기 */
 			if (ParsedToken.operand != null) {
 				if (ParsedToken.operand[0] != null && ParsedToken.operand[0].charAt(0) == '=') {
 					int litLength = ParsedToken.operand[0].length();
@@ -222,7 +229,7 @@ public class Assembler {
 				}
 			}
 
-			/* literal table에 저장된 literal에 주소 저장 */
+			/* literal table에 저장된 literal에 주소 저장 - 0으로 통일한 주소를 알맞은 주소로 수정 */
 			String literalName;
 			if (line.charAt(0) != '.') {
 				if (ParsedToken.operator.equals("LTORG") || ParsedToken.operator.equals("END")) {
@@ -242,7 +249,7 @@ public class Assembler {
 				}
 			}
 
-			/* externalList 저장 */
+			/* externalList 저장 - external reference의 명 저장 */
 			if (ParsedToken.operator != null && ParsedToken.operator.equals("EXTREF")) {
 				String[] exToken = ParsedToken.operand[0].split(",");
 
@@ -251,7 +258,10 @@ public class Assembler {
 				}
 			}
 
-			/* modifyList 저장 */
+			/*
+			 * modifyList 저장 - externalList를 바탕으로 modification명, 호출되는 location, 수정할 address의
+			 * 위치
+			 */
 			if (ParsedToken.operand != null) {
 				for (int modifIndex = 0; modifIndex < externalList.get(numSection).getListSize(); modifIndex++) {
 					if (ParsedToken.operand[0] != null
@@ -283,21 +293,26 @@ public class Assembler {
 		Token currentToken;
 		int sectionSize;
 		int endFlag;
-		
-		// TODO Auto-generated method stub
+
+		/* token의 object code를 완성 */
 		for (int secIndex = 0; secIndex <= numSection; secIndex++) {
 			for (int tokenIndex = 0; tokenIndex < TokenList.get(secIndex).getSize(); tokenIndex++) {
 				TokenList.get(secIndex).makeObjectCode(tokenIndex);
 			}
 		}
 
+		/*
+		 * object code를 바탕으로 codelist를 작성한다 이때 section은 따로 나눠주지 않고 출력할 때 section이 바뀌면 빈
+		 * 문장이 출력되도록 한다
+		 */
 		for (int secIndex = 0; secIndex <= numSection; secIndex++) {
 			sectionSize = 0;
 			endFlag = 0;
 			for (int tokenIndex = 0; tokenIndex < TokenList.get(secIndex).getSize(); tokenIndex++) {
 				codeLine = new String();
 				currentToken = TokenList.get(secIndex).getToken(tokenIndex);
-				
+
+				/* 프로그램의 시작을 받은 경우 endFlag를 1로 하여 object program을 출력할 때 End record의 값을 출력 */
 				if (currentToken.operator != null && currentToken.operator.equals("START")) {
 					endFlag = 1;
 				}
@@ -307,11 +322,6 @@ public class Assembler {
 					for (int i = 0; i < TokenList.get(secIndex).getSize(); i++) {
 						sectionSize += TokenList.get(secIndex).getToken(i).byteSize;
 					}
-					/*
-					for (int i = 0; i < literalList.get(secIndex).getListSize(); i++) {
-						sectionSize += literalList.get(secIndex).getLiteralSize(i);
-					}
-					*/
 					codeLine = "H" + currentToken.label + "\t"
 							+ String.format("%06X%06X", currentToken.location, sectionSize);
 					codeList.add(codeLine);
@@ -378,17 +388,17 @@ public class Assembler {
 
 			/* modification */
 			for (int modIndex = 0; modIndex < modifyList.get(secIndex).getListSize(); modIndex++) {
-				codeLine = "M" + String.format("%06X", modifyList.get(secIndex).getAddress(modIndex)) + 
-						String.format("%02X", modifyList.get(secIndex).getModifyPoint(modIndex)) + modifyList.get(secIndex).getSymbol(modIndex);
-			codeList.add(codeLine);
+				codeLine = "M" + String.format("%06X", modifyList.get(secIndex).getAddress(modIndex))
+						+ String.format("%02X", modifyList.get(secIndex).getModifyPoint(modIndex))
+						+ modifyList.get(secIndex).getSymbol(modIndex);
+				codeList.add(codeLine);
 			}
-			
+
 			/* End */
 			if (endFlag == 1) {
 				codeLine = "E" + String.format("%06X", symtabList.get(secIndex).getAddress(0));
 				codeList.add(codeLine);
-			}
-			else {
+			} else {
 				codeLine = "E";
 				codeList.add(codeLine);
 			}
@@ -410,9 +420,7 @@ public class Assembler {
 			BufferedReader bufReader = new BufferedReader(filereader);
 
 			String line;
-			StringTokenizer token;
 			while ((line = bufReader.readLine()) != null) {
-				token = new StringTokenizer(line);
 				lineList.add(line);
 			}
 			bufReader.close();
