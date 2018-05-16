@@ -127,7 +127,7 @@ public class Assembler {
 			for (int i = 0; i <= numSection; i++) {
 				for (int j = 0; j < symtabList.get(i).getListSize(); j++) {
 					String line = symtabList.get(i).getSymbol(j) + "\t"
-							+ Integer.toHexString(symtabList.get(i).getAddress(j)) + "\r\n";
+							+ String.format("%X", symtabList.get(i).getAddress(j)) + "\r\n";
 					filewriter.write(line);
 				}
 				filewriter.write("\r\n"); // filewirter.write("\n");ÇÏ¸é °³ÇàÀÌ ±úÁü
